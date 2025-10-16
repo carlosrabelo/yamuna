@@ -41,6 +41,9 @@ public:
 
     // Get connection status
     static String getStatus();
+
+    // Submit share to pool
+    static bool submitShare(uint32_t nonce, const char* worker_name);
 };
 
 #ifdef __cplusplus

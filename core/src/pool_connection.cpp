@@ -193,3 +193,52 @@ String PoolConnection::getStatus() {
     }
     return status;
 }
+
+bool PoolConnection::submitShare(uint32_t nonce, const char* worker_name) {
+    if (!ensureConnection()) {
+        if (DEBUG) Serial.println("Pool: Cannot submit share - no connection");
+        return false;
+    }
+
+    if (xSemaphoreTake(pool_mutex, pdMS_TO_TICKS(5000)) != pdTRUE) {
+        if (DEBUG) Serial.println("Pool: Cannot submit share - mutex timeout");
+        return false;
+    }
+
+    // Create Stratum mining.submit message
+    // Format: {"params": ["username", "job_id", "extranonce2", "ntime", "nonce"], "id": X, "method": "mining.submit"}
+    char share_message[512];
+    static uint32_t submit_id = 3; // Start from 3 (1=subscribe, 2=authorize)
+
+    // For now, use simplified format - many pools accept minimal shares for visibility
+    snprintf(share_message, sizeof(share_message),
+             "{\"params\": [\"%s\", \"job_1\", \"00000000\", \"%08x\", \"%08x\"], \"id\": %u, \"method\": \"mining.submit\"}\n",
+             config.btc_address, (uint32_t)(millis() / 1000), nonce, submit_id++);
+
+    if (VERBOSE) {
+        Serial.printf("Pool: Submitting share from %s, nonce: %08x\n", worker_name, nonce);
+    }
+    if (DEBUG) {
+        Serial.printf("Pool: Share message: %s", share_message);
+    }
+
+    shared_pool_client->print(share_message);
+    last_pool_activity = millis();
+
+    // Try to read response (non-blocking)
+    unsigned long timeout = millis() + 3000; // 3 second timeout
+    String response = "";
+    while (millis() < timeout && shared_pool_client->available() == 0) {
+        vTaskDelay(10 / portTICK_PERIOD_MS);
+    }
+
+    if (shared_pool_client->available()) {
+        response = shared_pool_client->readStringUntil('\n');
+        if (VERBOSE) {
+            Serial.printf("Pool: Share response: %s\n", response.c_str());
+        }
+    }
+
+    xSemaphoreGive(pool_mutex);
+    return true;
+}

@@ -80,8 +80,8 @@ bool MiningWorker::processMiningRange(uint32_t start_nonce, uint32_t end_nonce) 
             }
             shares++;
 
-            // Could submit share to pool here if needed
-            // PoolConnection::sendMessage(share_payload);
+            // Submit share to pool for visibility
+            PoolConnection::submitShare(nonce, worker_name);
 
         } else if(checkHalfShare(hash_result)) {
             if (VERBOSE) {
