@@ -337,8 +337,8 @@ bool PoolConnection::subscribeToPool() {
 bool PoolConnection::authorizeWorker() {
     char auth_message[256];
     snprintf(auth_message, sizeof(auth_message),
-             "{\"id\": %u, \"method\": \"mining.authorize\", \"params\": [\"%s\", \"x\"]}\n",
-             message_id++, config.btc_address);
+             "{\"id\": %u, \"method\": \"mining.authorize\", \"params\": [\"%s\", \"%s\"]}\n",
+             message_id++, config.btc_address, config.pool_password);
 
     if (!sendMessage(auth_message)) {
         return false;
