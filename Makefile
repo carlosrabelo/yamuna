@@ -53,6 +53,10 @@ erase: check-pio ## Erase flash memory completely
 check: check-pio ## Check project configuration
 	@$(MAKE) --no-print-directory _run-pio ARGS="check --environment $(BUILD_ENV)"
 
+test: check-pio ## Run unit tests
+	@echo "Running unit tests..."
+	@$(MAKE) --no-print-directory _run-pio ARGS="test -e test"
+
 detect: ## Auto-detect connected ESP32 boards
 	@./scripts/detect_board.sh
 

@@ -79,8 +79,8 @@ void MiningWorker::mineLoop() {
             Serial.printf("%s: Completed mining cycle\n", worker_name);
         }
 
-        // Brief pause before next cycle
-        vTaskDelay(pdMS_TO_TICKS(1000));
+        // No delay here to maximize performance
+        vTaskDelay(pdMS_TO_TICKS(1)); // Minimal delay to allow task switching
     }
 }
 
@@ -130,17 +130,19 @@ bool MiningWorker::processMiningRange(uint32_t start_nonce, uint32_t end_nonce) 
             halfshares++;
         }
 
-        hashes++;
+        __atomic_fetch_add(&hashes, 1, __ATOMIC_RELAXED);
 
         // Reset watchdog periodically and check for new jobs
         if ((nonce % (NONCE_BATCH_SIZE * 16)) == 0) {
             esp_task_wdt_reset();
             vTaskDelay(1);
 
-            // Check for new Stratum messages
-            String message = PoolConnection::readResponse(10);
-            if (message.length() > 0) {
-                PoolConnection::processStratumMessage(message);
+            // Only worker 0 should check for new jobs to prevent mutex contention
+            if (worker_id == 0) {
+                String message = PoolConnection::readResponse(10);
+                if (message.length() > 0) {
+                    PoolConnection::processStratumMessage(message);
+                }
             }
 
             // Show progress for debugging
@@ -183,28 +185,30 @@ void MiningMonitor::start() {
 void MiningMonitor::updateDisplay() {
     static unsigned long start = millis();
     static unsigned long last_report = start;
-    static long last_hashes = 0;
+    static unsigned long last_hashes = 0;
 
     unsigned long now = millis();
     unsigned long elapsed = now - start;
     unsigned long interval = now - last_report;
 
     if (interval >= 5000) { // Update every 5 seconds
-        long hash_diff = hashes - last_hashes;
+        unsigned long hash_diff = __atomic_load_n(&hashes, __ATOMIC_RELAXED) - last_hashes;
         float instant_rate = (interval > 100) ? (hash_diff * 1000.0) / interval / 1000.0 : 0;
         float avg_rate = (elapsed > 1000) ? (hashes * 1000.0) / elapsed / 1000.0 : 0;
 
         uint32_t stratum_diff = PoolConnection::hasValidJob() ? PoolConnection::getCurrentDifficulty() : 1;
-        String current_job = PoolConnection::hasValidJob() ? PoolConnection::getCurrentJobId() : "none";
+        String current_job = PoolConnection::getCurrentJobId();
 
-        if (VERBOSE) {
-            // Detailed output when VERBOSE=1
-            Serial.printf(">>> Shares: %d | Hashes: %ld | Avg: %.2f KH/s | Current: %.2f KH/s | Temp: %.1f°C | Stratum Diff: %u | Job: %s\n",
-                         shares, hashes, avg_rate, instant_rate, temperatureRead(), stratum_diff, current_job.c_str());
-        } else {
-            // Clean cpuminer-style output when VERBOSE=0
-            Serial.printf("[%.2f KH/s] %d shares, %.1f°C, diff %u, job %s\n",
-                         instant_rate, shares, temperatureRead(), stratum_diff, current_job.c_str());
+        if (PoolConnection::hasValidJob()) {
+            if (VERBOSE) {
+                // Detailed output when VERBOSE=1
+                Serial.printf(">>> Shares: %d | Hashes: %lu | Avg: %.2f KH/s | Current: %.2f KH/s | Temp: %.1f°C | Stratum Diff: %u | Job: %s\n",
+                            shares, __atomic_load_n(&hashes, __ATOMIC_RELAXED), avg_rate, instant_rate, temperatureRead(), stratum_diff, current_job.c_str());
+            } else {
+                // Clean cpuminer-style output when VERBOSE=0
+                Serial.printf("[%7.2f KH/s] %d shares, %.1fC, diff %u, job %s\n",
+                            instant_rate, shares, temperatureRead(), stratum_diff, current_job.c_str());
+            }
         }
 
         last_hashes = hashes;

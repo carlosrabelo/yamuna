@@ -1,6 +1,10 @@
 // YAMUNA Configuration
 // Default values - will be configurable via web interface
 
+// SHA-256 Implementation
+// 0 = Pure C, 1 = ESP32 Hardware Acceleration
+#define USE_HW_SHA256 1
+
 // Debug and Verbose Flags
 #define DEBUG 0
 #define VERBOSE 0  // 0 = clean output (cpuminer style), 1 = show detailed messages
@@ -10,7 +14,7 @@
 #define DEFAULT_WIFI_PASSWORD ""
 
 // Mining Configuration
-#define THREADS 1
+// #define THREADS 1 // Now auto-detected
 #define MAX_NONCE 0xFFFFFFFF  // Use full 32-bit range for better share finding
 
 // Share Difficulty Configuration (for pool visibility)
@@ -22,6 +26,7 @@
 #define DEFAULT_POOL_URL "public-pool.io"
 #define DEFAULT_POOL_PORT 21496
 #define DEFAULT_ADDRESS "bc1qw2raw7urfuu2032uyyx9k5pryan5gu6gmz6exm.worker"
+#define DEFAULT_POOL_PASSWORD "x"
 
 // Web Configuration Portal
 #define AP_SSID "YAMUNA"

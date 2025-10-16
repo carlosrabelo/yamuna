@@ -88,11 +88,9 @@ void displayConfiguration() {
         Serial.println("Bitcoin mining powered by ESP32 with modular architecture");
         Serial.printf("Pool: %s:%d\n", config.pool_url, config.pool_port);
         Serial.printf("Address: %s\n", config.btc_address);
-        Serial.printf("Threads: %d (limited to 2 max)\n", min(config.threads, 2));
         Serial.println("===================================\n");
     } else {
         Serial.printf("Pool: %s:%d\n", config.pool_url, config.pool_port);
-        Serial.printf("Threads: %d\n", min(config.threads, 2));
         Serial.println("Starting miner...");
     }
 }
@@ -133,8 +131,13 @@ bool startMiningTasks() {
         Serial.println("Starting modular mining tasks...");
     }
 
-    // Start mining worker tasks (limited to 1-2 threads as requested)
-    int num_workers = min(config.threads, 2);
+    // Auto-detect number of cores and start mining workers (max 2)
+    int num_workers = min((int)ESP.getChipCores(), 2);
+    if (num_workers == 1) {
+        Serial.println("Single-core ESP32 detected, starting 1 worker task.");
+    } else {
+        Serial.printf("%d-core ESP32 detected, starting %d worker tasks.\n", num_workers, num_workers);
+    }
     char worker_names[num_workers][16];
     TaskHandle_t worker_handles[num_workers];
 
@@ -193,6 +196,9 @@ void setup() {
         Serial.println("Device configuration failed!");
         ESP.restart();
     }
+
+    // List SPIFFS files for diagnostics
+    listSpiffsFiles();
 
     // Step 3: Initialize WiFi
     if (!initializeWiFi()) {

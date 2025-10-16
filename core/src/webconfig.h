@@ -14,10 +14,12 @@ struct YamunaConfig {
     char wifi_password[64];
     char pool_url[64];
     int pool_port;
-    char pool_password[32];
     char btc_address[64];
-    int threads;
+    char pool_password[64];
     bool configured;
+    bool use_yuma;          // Use YUMA proxy instead of traditional pool
+    char yuma_ip[16];       // Discovered YUMA IP address
+    int yuma_port;          // YUMA port (default 3334)
 };
 
 // Global config instance
@@ -29,6 +31,7 @@ extern Preferences preferences;
 void initWebConfig();
 void startConfigAP();
 void handleConfigWeb();
+void listSpiffsFiles();
 void saveConfig();
 void loadConfig();
 bool isConfigured();
