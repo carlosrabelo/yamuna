@@ -28,7 +28,7 @@ String calculateMerkleRoot(const String& coinb1, const String& coinb2, const Str
 bool checkStratumTarget(const uint8_t* hash, uint32_t difficulty);
 
 // Performance statistics
-extern volatile long hashes;
+extern volatile unsigned long hashes;
 extern volatile int halfshares;
 extern volatile int shares;
 extern volatile int valids;

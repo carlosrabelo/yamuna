@@ -4,7 +4,7 @@
 #include "sha256_esp32.h"
 
 // Global statistics variables
-volatile long hashes = 0;
+volatile unsigned long hashes = 0;
 volatile int halfshares = 0;
 volatile int shares = 0;
 volatile int valids = 0;
@@ -120,26 +120,40 @@ void updateAdaptiveDifficulty() {
     unsigned long now = millis();
     unsigned long time_since_last_share = now - last_share_time;
 
-    // Only adjust every 30 seconds to avoid frequent changes
+    // Only adjust every 60 seconds to avoid frequent changes
     static unsigned long last_adjustment = 0;
-    if (now - last_adjustment < 30000) return;
+    if (now - last_adjustment < 60000) return;
 
     last_adjustment = now;
 
-    // If no shares found for too long, decrease difficulty
-    if (time_since_last_share > TARGET_SHARE_INTERVAL * 2 && current_difficulty_level > 1) {
+    // Minimum difficulty level to prevent going to zero
+    uint8_t min_difficulty = max(SHARE_DIFFICULTY_LEVEL, 3);
+    uint8_t max_difficulty = 5;
+
+    // If no shares found for too long, decrease difficulty (but not below minimum)
+    if (time_since_last_share > TARGET_SHARE_INTERVAL * 2 && current_difficulty_level > min_difficulty) {
         current_difficulty_level--;
+        last_share_time = now; // Reset timer to give it a chance at the new difficulty
         if (VERBOSE) {
             Serial.printf("Decreasing difficulty to level %d (no shares for %lu ms)\n",
                          current_difficulty_level, time_since_last_share);
         }
     }
     // If shares coming too fast, increase difficulty
-    else if (time_since_last_share < TARGET_SHARE_INTERVAL / 3 && current_difficulty_level < 5) {
+    else if (time_since_last_share < TARGET_SHARE_INTERVAL / 3 && current_difficulty_level < max_difficulty) {
         current_difficulty_level++;
+        last_share_time = now; // Reset timer to avoid rapid successive increases
         if (VERBOSE) {
             Serial.printf("Increasing difficulty to level %d (shares too frequent)\n",
                          current_difficulty_level);
+        }
+    }
+
+    // Reset share time if it's been too long (prevents overflow)
+    if (time_since_last_share > TARGET_SHARE_INTERVAL * 10) {
+        last_share_time = now;
+        if (VERBOSE) {
+            Serial.println("Resetting share time timer (too long without shares)");
         }
     }
 }
