@@ -22,6 +22,11 @@ uint8_t getCurrentDifficultyLevel();
 uint8_t hex(char ch);
 int to_byte_array(const char *in, size_t in_size, uint8_t *out);
 
+// Stratum mining functions
+bool buildBlockHeader(uint8_t* header, uint32_t nonce, const String& extranonce2);
+String calculateMerkleRoot(const String& coinb1, const String& coinb2, const String& extranonce1, const String& extranonce2, const String merkle_branch[], int merkle_count);
+bool checkStratumTarget(const uint8_t* hash, uint32_t difficulty);
+
 // Performance statistics
 extern volatile long hashes;
 extern volatile int halfshares;
