@@ -13,6 +13,30 @@ extern "C" {
 // Connection constants
 #define CONNECTION_TIMEOUT 300000 // 5 minutes
 
+// Stratum protocol structures
+struct StratumJob {
+    String job_id;
+    String prevhash;
+    String coinb1;
+    String coinb2;
+    String merkle_branch[16];
+    int merkle_count;
+    String version;
+    String nbits;
+    String ntime;
+    bool clean_jobs;
+};
+
+struct StratumState {
+    bool subscribed;
+    bool authorized;
+    String extranonce1;
+    int extranonce2_size;
+    uint32_t difficulty;
+    String session_id;
+    StratumJob current_job;
+};
+
 // Pool connection management
 class PoolConnection {
 private:
@@ -44,6 +68,20 @@ public:
 
     // Submit share to pool
     static bool submitShare(uint32_t nonce, const char* worker_name);
+
+    // Stratum protocol functions
+    static bool performStratumHandshake();
+    static bool subscribeToPool();
+    static bool authorizeWorker();
+    static bool processStratumMessage(const String& message);
+    static bool handleMiningNotify(const String& params);
+    static bool submitStratumShare(uint32_t nonce, const String& extranonce2, const String& ntime);
+
+    // Get current Stratum state
+    static StratumState* getStratumState();
+    static bool hasValidJob();
+    static String getCurrentJobId();
+    static uint32_t getCurrentDifficulty();
 };
 
 #ifdef __cplusplus
